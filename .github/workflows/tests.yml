@@ -5,8 +5,6 @@ on:
   pull_request:
     branches: [ master ]
 
-env:
-  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
 jobs:
   test-postgres:
@@ -63,8 +61,3 @@ jobs:
           --build
           --quiet-pull
           --exit-code-from tester
-      - uses: act10ns/slack@v2
-        with: 
-          status: ${{ job.status }}
-          steps: ${{ toJson(steps) }}
-        if: always()
