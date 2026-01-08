@@ -49,6 +49,7 @@ jobs:
           --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           --build-arg RELEASE=${VERSION}
           --build-arg VERSION=${{ github.sha }}
+          --build-arg CACHEBUST=$(date +%s)
           -t $IMAGE_NAME
           -t $REPOSITORY_URL/$IMAGE_NAME:${VERSION}
           -t $REPOSITORY_URL/$IMAGE_NAME:$(git rev-parse --short HEAD)
