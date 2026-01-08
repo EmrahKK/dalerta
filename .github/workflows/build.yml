@@ -1,0 +1,68 @@
+name: Build and Push
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag/Version to build (e.g., v1.0.0)'
+        required: false
+        default: 'latest'
+      platform:
+        description: 'Platform tag'
+        required: false
+        default: '3.9-buster-uwsgi'
+
+jobs:
+  push:
+    name: Docker Push
+    runs-on: ubuntu-latest
+    env:
+      REPOSITORY_URL: registry.hub.docker.com
+      IMAGE_NAME: emrahkk/alerta-web
+      PLATFORM: ${{ inputs.platform || '3.9-buster-uwsgi' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      
+      - name: Set Version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            if [ -n "${{ inputs.tag }}" ] && [ "${{ inputs.tag }}" != "latest" ]; then
+              echo "VERSION=${{ inputs.tag }}" >> $GITHUB_ENV
+            else
+              echo "VERSION=$(cat VERSION)" >> $GITHUB_ENV
+            fi
+          else
+            echo "VERSION=$(cat VERSION)" >> $GITHUB_ENV
+          fi
+
+      - name: Pull latest base image
+        run: docker pull python:3.11-slim-bookworm
+          
+      - name: Build Image
+        id: docker-build
+        run: >-
+          docker build --pull --no-cache
+          --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          --build-arg RELEASE=${VERSION}
+          --build-arg VERSION=${{ github.sha }}
+          --build-arg CACHEBUST=$(date +%s)
+          -t $IMAGE_NAME
+          -t $REPOSITORY_URL/$IMAGE_NAME:${VERSION}
+          -t $REPOSITORY_URL/$IMAGE_NAME:$(git rev-parse --short HEAD)
+          -t $REPOSITORY_URL/$IMAGE_NAME:$PLATFORM
+          -t $REPOSITORY_URL/$IMAGE_NAME:latest .
+          
+      - name: Docker Login
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REPOSITORY_URL }}
+          username: emrahkk
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          
+      - name: Publish Image
+        id: docker-push
+        run: docker push --all-tags $REPOSITORY_URL/$IMAGE_NAME
