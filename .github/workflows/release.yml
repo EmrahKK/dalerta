@@ -38,11 +38,14 @@ jobs:
           else
             echo "VERSION=$(cat VERSION)" >> $GITHUB_ENV
           fi
+
+      - name: Pull latest base image
+        run: docker pull python:3.11-slim-bookworm
           
       - name: Build Image
         id: docker-build
         run: >-
-          docker build --no-cache
+          docker build --pull --no-cache
           --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           --build-arg RELEASE=${VERSION}
           --build-arg VERSION=${{ github.sha }}
